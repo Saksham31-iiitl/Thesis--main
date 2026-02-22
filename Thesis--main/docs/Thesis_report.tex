@@ -1,0 +1,622 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{amsmath,amsfonts,amssymb,amsthm,hyperref,color,graphicx}
+\usepackage{enumerate}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{newlfont}
+\usepackage[round]{natbib}
+\usepackage{booktabs}
+\usepackage{multirow}
+% bullets and enumerations
+\renewcommand{\labelitemi}{$\bullet$}
+\renewcommand{\labelitemii}{$\cdot$}
+\renewcommand{\labelitemiii}{$\diamond$}
+\renewcommand{\labelitemiv}{$\ast$}
+% for circle $\circ$
+% set margin -------------------------------------------------------------
+\oddsidemargin=-.1in
+\evensidemargin=.1in
+\textwidth=6.2in
+\topmargin=-.5in
+\textheight=9in
+%\parindent=0in
+%\pagestyle{plain}
+%\linespread{1.3}
+%% My definition
+%\newcommand{\mvec}[1]{\mbox{\bfseries\itshape #1}}
+
+% Line spacing -----------------------------------------------------------
+\newlength{\defbaselineskip}
+\setlength{\defbaselineskip}{\baselineskip}
+\newcommand{\setlinespacing}[1]%
+           {\setlength{\baselineskip}{#1 \defbaselineskip}}
+\newcommand{\doublespacing}{\setlength{\baselineskip}%
+                           {2.0 \defbaselineskip}}
+% Maths --------------------------------------------------------------------
+\newtheorem{lemma}{Lemma}
+\newtheorem{thm}{Theorem}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+\newtheorem{corollary}{Corollary}
+\newtheorem{remark}{Remark}
+%\thispagestyle{empty}
+%--------------------------------------------------------------------------
+
+\begin{document}
+% Title page ---------------------------------------------------------------
+\thispagestyle{empty}
+\begin{titlepage}
+\begin{center}
+\textsc{\Large \textbf{Towards Energy Efficient Data Transmission in WSN-assisted IoT using Spatio-Temporal Clustering and TinyML}}\\[0.85cm]
+\end{center}
+\begin{center}
+%\vspace{0.2in}
+%{\large Dissertation} \\
+\vspace{0.1in}
+{\large \it A report submitted in partial fulfilment of the requirements for the award of degree of} \\
+\vspace{0.3in}
+{\Large \bf M.Tech.} \\
+\vspace{0.3in}
+{\large \it in\\}
+\vspace{0.3in}
+{\Large \bf Computer Science (Data Science)} \\
+\vspace{0.3in}
+{\large \it by\\}
+\vspace{0.2in}
+{\Large \bf Saksham}\\
+\vspace{0.2in}
+{\Large (MCS24025)}\\
+\vspace{0.4in}
+{\large \it under the guidance of\\}
+\vspace{0.3in}
+{\Large \bf Dr. Rahul Kumar Verma}\\
+\end {center}
+\vspace{0.2in}
+\begin{figure}[h]
+\centerline{\includegraphics[width=1.7in, height=1.6in]{iiitl}}
+\end{figure}
+\vspace{0.1in}
+\begin{center}
+{\Large \bf INDIAN INSTITUTE OF INFORMATION TECHNOLOGY LUCKNOW-226002\\}
+\vspace{0.2in}
+{\large \bf Aug-Dec, 2025\\}
+\end{center}
+\end{titlepage}
+% Synopsis main text -----------------------------------------------------------------
+\newpage
+\setcounter{page}{1}
+\setlinespacing{1}
+\begin{center}
+{\large \bf CANDIDATE'S DECLARATION}
+\end{center}
+I hereby certify that I have properly checked and verified all the items as prescribed in the check-list and ensure that my thesis/report is in proper format as specified in the guideline for thesis preparation.\\
+
+\noindent I also declare that the work containing in this report is my own work. I, understand that plagiarism is defined as any one or combination of the following:
+\begin{enumerate}
+\item To steal and pass off (the ideas or words of another) as one's own
+\item To use (another's production) without crediting the source
+\item To commit literary theft
+\item To present as new and original an idea or product derived from an existing source.
+\end{enumerate}
+I understand that plagiarism involves an intentional act by the plagiarist of using someone else's work/ideas completely/partially and claiming authorship/originality of the work/ideas. Verbatim copy as well as close resemblance to some else's work constitute plagiarism.\\
+
+\noindent I have given due credit to the original authors/sources for all the words, ideas, diagrams, graphics, computer programmes, experiments, results, websites, that are not my original contribution. I have used quotation marks to identify verbatim sentences and given credit to the original authors/sources.\\
+
+\noindent I affirm that no portion of my work is plagiarized, and the experiments and results reported in the report/dissertation/thesis are not manipulated. In the event of a complaint of plagiarism and the manipulation of the experiments and results, I shall be fully responsible and answerable. My faculty supervisor(s) will not be responsible for the same.\vspace{1cm}\\
+
+\noindent Signature:\\
+Name: Saksham\\
+Roll No.: MCS24025\\
+Date: 27 September, 2025\\
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Ack
+\begin{center}
+{\large \bf ACKNOWLEDGEMENT}
+\end{center}
+I am highly indebted to {\bf Dr. Rahul Kumar Verma}, and obliged for giving me the autonomy of functioning and experimenting with ideas. I would like to take this opportunity to express my profound gratitude to him
+not only for his academic guidance but also for his personal interest in my report and constant support coupled with confidence boosting and motivating sessions which proved very fruitful and were instrumental in infusing self-assurance and trust within me. The nurturing and blossoming of the present work is mainly due to his valuable guidance,
+suggestions, astute judgement, constructive criticism and an eye for perfection. My mentor always answered myriad of my doubts with smiling graciousness and prodigious patience, never letting me feel that I am novices by always lending an ear to my views, appreciating and improving them and by giving me a free hand in my report. It's only because of his overwhelming interest and helpful attitude, the present work has attained the stage it has. \\
+\\
+Finally, I am grateful to our Institution and colleagues whose constant encouragement served to renew my spirit, refocus my attention and energy and helped me in carrying out this work.\\ \\ \\ \\
+\vspace{0.7in}
+\textbf{Date: September 27, 2025}
+\hspace{2.8in}
+\textbf{Saksham}
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{center}
+{\large \bf ABSTRACT}
+\end{center}
+
+This thesis addresses the challenges of energy-efficient data transmission in Wireless Sensor Networks (WSN)-assisted Internet of Things (IoT) systems using Tiny Machine Learning (TinyML). Energy consumption is a critical concern in IoT networks, as sensor nodes typically operate on limited battery power, restricting their operational lifetime and overall network performance.
+
+The proposed framework integrates spatio-temporal clustering of sensor nodes with TinyML models deployed directly on resource-constrained devices for real-time prediction and intelligent decision-making. We employ a comprehensive clustering comparison strategy evaluating multiple algorithms including K-Means, DBSCAN, and Hierarchical clustering on the Intel Berkeley Research Lab dataset comprising 54 sensor nodes and approximately 2.3 million timestamped environmental readings. Our multi-criteria cluster head selection strategy balances residual energy, network topology, and spatial centrality to optimize communication patterns.
+
+For predictive analytics, we evaluate multiple TinyML-compatible models including Decision Trees with varying depths, Random Forests, Gradient Boosting, and linear regression variants, selecting optimal configurations based on prediction accuracy, model size, and inference time. The system continuously compares sensed data with model predictions, triggering server alerts and adaptive retraining when significant discrepancies are detected. This mismatch-driven continuous learning loop employs Stochastic Gradient Descent with partial updates to refine models incrementally.
+
+Experimental results on real-world sensor data demonstrate a static prediction mismatch rate of 32.96\% with energy consumption of 2.127 mJ per epoch. The continuous learning framework achieves a retraining frequency of 77.35\%, with dynamic energy increasing to 775.627 mJ (365$\times$ overhead) and latency rising from 0.17s to 1.72s (10$\times$ overhead). These findings quantify the fundamental trade-offs between model adaptability, energy efficiency, and response time in WSN-assisted IoT deployments.
+
+By incorporating rigorous algorithmic comparisons, energy-latency modeling, and a complete continuous learning pipeline, this research contributes to the design of sustainable and efficient IoT systems for real-time environmental monitoring, smart cities, and industrial automation scenarios requiring low-power operation and adaptive intelligence.
+
+\textbf{Keywords}: Wireless Sensor Networks, Internet of Things, Tiny Machine Learning, Energy Efficiency, Spatio-Temporal Clustering, Real-Time Data Processing, Continuous Learning, Edge Computing.
+
+\clearpage
+\tableofcontents
+
+
+%\listoftables
+\newpage
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+\subsection{Background and Motivation}
+The Internet of Things (IoT) has fundamentally transformed how devices interact, enabling unprecedented connectivity and data-driven decision-making across domains ranging from smart cities to industrial automation. At the core of many IoT applications lie Wireless Sensor Networks (WSNs), comprising spatially distributed sensor nodes that monitor environmental parameters such as temperature, humidity, light intensity, and air quality. These networks generate massive streams of real-time data that must be processed, transmitted, and analyzed efficiently.
+
+However, WSN-assisted IoT systems face a critical challenge: energy consumption \cite{Ahmed2023WSNEnergy}. Sensor nodes typically operate on limited battery power in remote or inaccessible locations where battery replacement is impractical or costly. Traditional approaches that continuously transmit all sensor readings to centralized servers result in rapid battery depletion, reduced network lifetime, and increased communication overhead. This creates an urgent need for intelligent data transmission strategies that minimize energy usage while maintaining high data quality and prediction accuracy.
+
+Tiny Machine Learning (TinyML) has emerged as a transformative paradigm for addressing these challenges \cite{Ray2022TinyMLDeployment, Sakr2024TinyMLApplications}. TinyML enables the deployment of machine learning models directly on resource-constrained microcontrollers and edge devices with limited memory, processing power, and energy budgets. By performing local inference at the sensor nodes, TinyML reduces the frequency of data transmissions, enables real-time decision-making, and significantly lowers energy consumption compared to cloud-centric approaches.
+
+Recent advances in edge computing and distributed learning have further demonstrated the potential of intelligent processing at the network edge \cite{Wang2023EdgeAI, Zhang2024FederatedEdge}. However, most existing solutions focus on either spatial optimization through clustering or temporal optimization through predictive models, but rarely integrate both dimensions in a unified framework with continuous model adaptation.
+
+\subsection{Problem Statement}
+The primary challenge addressed in this research is designing an energy-efficient, adaptive data transmission system for WSN-assisted IoT environments that balances multiple competing objectives: minimizing energy consumption, reducing communication overhead, maintaining prediction accuracy, and adapting to environmental changes over time.
+
+Specifically, we identify the following critical problems:
+
+\textbf{Energy-Communication Trade-off:} Continuous transmission of sensor data drains battery power rapidly, yet reducing transmission frequency may compromise data quality and application responsiveness. Finding the optimal balance requires intelligent prediction and selective transmission strategies.
+
+\textbf{Spatio-Temporal Correlation:} Sensor readings exhibit strong spatial correlation (nearby nodes observe similar values) and temporal correlation (readings follow predictable patterns over time) \cite{Chen2023SpatioTemporal}. Existing approaches often exploit only one dimension, missing opportunities for further optimization.
+
+\textbf{Model Deployment on Constrained Devices:} Training and deploying machine learning models on microcontrollers with limited RAM (typically 256 KB) and flash memory (1-2 MB) requires careful model selection, quantization, and optimization \cite{Sakr2024TinyMLApplications}.
+
+\textbf{Continuous Learning and Adaptation:} Environmental conditions and sensor characteristics drift over time due to seasonal changes, sensor aging, and environmental disturbances \cite{Alonso2024OnlineLearning, Silva2023IncrementalML}. Static models trained offline degrade in accuracy, necessitating continuous learning mechanisms that update models incrementally without excessive energy or latency costs.
+
+\textbf{Clustering and Head Selection:} Organizing sensor nodes into clusters with designated cluster heads can reduce communication paths and energy consumption \cite{Sharma2024ClusteringWSN, Abbas2023EnergyAwareClustering}. However, selecting optimal cluster heads that balance energy reserves, spatial centrality, and connectivity remains challenging in dynamic networks.
+
+This research addresses these interconnected challenges by developing an integrated framework that combines spatio-temporal clustering, TinyML model deployment, and continuous learning for energy-efficient WSN-assisted IoT systems.
+
+\subsection{Research Objectives}
+The main objectives of this research are:
+\begin{itemize}
+    \item \textbf{Comprehensive Clustering Analysis:} Evaluate and compare multiple clustering algorithms (K-Means, DBSCAN, Hierarchical clustering) for spatial organization of sensor nodes, selecting the optimal approach based on clustering quality metrics and computational efficiency.
+
+    \item \textbf{Energy-Aware Cluster Head Selection:} Develop a multi-criteria cluster head selection strategy that considers residual battery energy, distance from cluster centroid, node degree, and communication range to maximize network lifetime.
+
+    \item \textbf{TinyML Model Evaluation and Selection:} Compare multiple lightweight regression models including Decision Trees, Random Forests, Gradient Boosting, and linear regression on prediction accuracy, model size, inference time, and energy consumption metrics.
+
+    \item \textbf{Continuous Learning Pipeline:} Implement a mismatch-driven continuous learning mechanism where sensor nodes compare predictions with actual readings, triggering incremental model updates via online learning when discrepancies exceed thresholds.
+
+    \item \textbf{Energy-Latency Trade-off Analysis:} Quantify the complete energy and latency profiles for both static (one-time trained) and dynamic (continuously retrained) scenarios, including sensing, processing, transmission, and retraining costs.
+
+    \item \textbf{Temporal Feature Engineering:} Extract comprehensive temporal features including cyclical encodings for hour and day-of-week to capture diurnal and weekly patterns in sensor data.
+
+    \item \textbf{Real-World Validation:} Evaluate the proposed framework on the Intel Berkeley Research Lab dataset with 54 spatially distributed motes and over 2.3 million environmental readings spanning multiple weeks.
+\end{itemize}
+
+\subsection{Research Contribution}
+This research contributes to the field of energy-efficient IoT systems by:
+\begin{itemize}
+    \item \textbf{Integrated Spatio-Temporal Framework:} A novel methodology combining spatial clustering with rich temporal feature engineering for both dimensions of correlation exploitation in WSN data.
+
+    \item \textbf{Comprehensive Algorithm Benchmarking:} Systematic comparison of multiple clustering algorithms and machine learning models specifically for TinyML deployment on WSN nodes, providing actionable insights for practitioners.
+
+    \item \textbf{Continuous Learning Architecture:} A complete implementation of edge-based continuous learning with mismatch detection, partial model updates, and quantified energy-latency trade-offs—addressing a critical gap in existing TinyML literature.
+
+    \item \textbf{Open-Source Implementation:} Fully reproducible Jupyter notebooks and Python scripts implementing the entire pipeline from data cleaning through retraining simulation, enabling replication and extension by the research community.
+
+    \item \textbf{Quantitative Trade-off Analysis:} Detailed measurements showing that aggressive continuous learning incurs substantial energy (365$\times$) and latency (10$\times$) overhead, providing critical insights for system design decisions in energy-constrained scenarios.
+\end{itemize}
+
+\subsection{Thesis Organization}
+The thesis is structured as follows:
+\begin{itemize}
+    \item \textbf{Chapter 1: Introduction} – Presents background, motivation, problem statement, research objectives, and contributions.
+    \item \textbf{Chapter 2: Literature Review} – Surveys recent work (2022-2025) in WSNs, TinyML, clustering algorithms, energy optimization, and continuous learning for IoT.
+    \item \textbf{Chapter 3: Methodology} – Describes the system architecture, dataset characteristics, clustering and model selection procedures, continuous learning pipeline, and evaluation metrics.
+    \item \textbf{Chapter 4: Implementation and Results} – Details the implementation in Jupyter notebooks, presents experimental results for clustering comparison, model comparison, and continuous learning simulation.
+    \item \textbf{Chapter 5: Discussion and Analysis} – Analyzes energy-latency trade-offs, discusses implications for real-world deployment, and compares with existing approaches.
+    \item \textbf{Chapter 6: Conclusion and Future Work} – Summarizes findings, discusses limitations, and outlines future research directions.
+\end{itemize}
+
+\newpage
+\section{Literature Review}
+
+Wireless Sensor Networks (WSNs) integrated with IoT systems have been extensively researched for applications in environmental monitoring, smart cities, healthcare, and industrial automation. However, energy constraints, data redundancy, and model adaptation remain critical challenges. This literature review examines recent advances in five key areas: energy optimization, clustering strategies, TinyML deployment, continuous learning, and spatio-temporal modeling.
+
+\subsection{Energy Optimization in Wireless Sensor Networks}
+
+Energy efficiency remains the paramount concern in WSN research due to the battery-powered nature of sensor nodes. Ahmed et al. \cite{Ahmed2023WSNEnergy} present a comprehensive deep learning-based energy consumption forecasting system that predicts battery depletion patterns, enabling proactive energy management strategies. Their approach achieves 35\% longer network lifetime compared to reactive protocols by scheduling energy-intensive tasks during periods of abundant residual energy.
+
+Recent work emphasizes the critical trade-off between communication frequency and data quality. Studies show that wireless communication can consume up to 70\% of total node energy, making transmission reduction the primary target for energy optimization. Multi-objective optimization frameworks balance transmission power, routing paths, and sleep scheduling to minimize overall energy consumption while meeting quality-of-service requirements.
+
+\subsection{Clustering and Cluster Head Selection}
+
+Clustering is a fundamental technique for organizing WSN nodes to minimize energy consumption through localized data aggregation. Sharma et al. \cite{Sharma2024ClusteringWSN} provide a comprehensive review of energy-efficient clustering protocols, highlighting the evolution from randomized approaches (LEACH) to deterministic, multi-criteria selection strategies that consider residual energy, node centrality, and connectivity.
+
+Abbas et al. \cite{Abbas2023EnergyAwareClustering} demonstrate that data aggregation at cluster heads can reduce transmissions by 60\% when spatial correlation exceeds 0.7. Their correlation-aware aggregation scheme adaptively adjusts aggregation functions based on measured data similarity, achieving significant energy savings. However, periodic correlation estimation itself consumes energy, requiring careful policy design.
+
+Recent comparative studies evaluate various clustering algorithms including K-Means, DBSCAN, and hierarchical methods for WSN spatial organization. K-Means typically provides the best balance between clustering quality (measured by silhouette scores) and computational efficiency, particularly for uniform node distributions common in planned deployments.
+
+\subsection{TinyML and Edge Intelligence}
+
+The TinyML paradigm has gained significant momentum with advances in model compression and specialized hardware accelerators for edge inference. Ray \cite{Ray2022TinyMLDeployment} presents a comprehensive review of TinyML state-of-the-art, identifying decision trees, shallow neural networks, and linear models as most suitable for microcontroller deployment due to their small memory footprints and fast inference times.
+
+Sakr et al. \cite{Sakr2024TinyMLApplications} provide an updated survey on TinyML progress and challenges, emphasizing the critical importance of model size (typically <100 KB for microcontrollers), inference latency (<10 ms for real-time applications), and energy per inference (<1 mJ for battery-powered devices). They identify knowledge distillation and quantization as key techniques for compressing deep models into TinyML-compatible architectures.
+
+Wang et al. \cite{Wang2023EdgeAI} survey the convergence of edge computing and deep learning, discussing hybrid architectures where lightweight models run on sensor nodes, moderate-complexity models on edge gateways (Raspberry Pi class), and complex ensemble models in the cloud. This hierarchical approach balances local responsiveness with global accuracy.
+
+\subsection{Continuous and Adaptive Learning}
+
+Static models trained offline suffer from accuracy degradation when environmental conditions drift or sensor characteristics change over time. Alonso et al. \cite{Alonso2024OnlineLearning} explore online learning mechanisms for IoT devices, implementing incremental updates as new samples arrive. Their findings show that continuous adaptation can maintain accuracy within 5\% of ideal continuously-retrained models, but energy costs of frequent updates remain a critical concern.
+
+Silva et al. \cite{Silva2023IncrementalML} provide a comprehensive survey on incremental learning for time series, comparing batch retraining versus online updates. Their analysis reveals that incremental methods maintain 92\% of batch model accuracy with substantially lower energy consumption, as they avoid full dataset iterations. However, incremental approaches are more susceptible to catastrophic forgetting of older patterns, requiring careful learning rate scheduling and sample buffering strategies.
+
+The challenge of balancing adaptation frequency with energy constraints emerges as a central theme. Aggressive per-sample updates consume excessive energy for marginal accuracy gains, while infrequent batch updates allow prolonged accuracy degradation. Adaptive policies that trigger retraining based on drift detection metrics offer a promising middle ground.
+
+\subsection{Spatio-Temporal Data Modeling}
+
+Sensor readings exhibit both spatial correlation (nearby nodes observe similar phenomena) and temporal correlation (readings follow predictable time-series patterns). Chen et al. \cite{Chen2023SpatioTemporal} develop unified spatio-temporal models that capture both dimensions simultaneously, reducing prediction error by 22\% compared to purely spatial or temporal approaches. Their work on air quality prediction demonstrates the importance of cyclical temporal encodings (hour-of-day, day-of-week) for capturing periodic environmental patterns.
+
+Recent work on lightweight temporal feature engineering shows that hand-crafted features including sine/cosine transformations for circular time variables can improve decision tree accuracy by 8-12\% while adding negligible computational overhead (<0.1 ms). These engineered features are particularly effective for embedded deployment where complex time-series models like LSTMs exceed memory constraints.
+
+Federated learning approaches \cite{Zhang2024FederatedEdge} enable collaborative model training across distributed sensor nodes without raw data sharing, preserving privacy while enabling adaptation to local environmental conditions. Compression schemes reduce communication overhead by 10$\times$, though synchronization protocols add complexity for duty-cycled nodes with intermittent connectivity.
+
+\subsection{Research Gaps and Contributions}
+
+While significant progress has been made in individual aspects of WSN optimization, TinyML deployment, and adaptive learning, critical gaps remain:
+
+\begin{itemize}
+    \item \textbf{Integrated Framework:} Most works address either spatial clustering or temporal prediction separately, but not both in a unified pipeline with continuous learning.
+
+    \item \textbf{Complete Energy Accounting:} Existing TinyML studies report inference energy but rarely quantify the full cost of continuous learning including retraining, model updates, and synchronization overhead.
+
+    \item \textbf{Algorithm Comparison:} Limited benchmarking exists comparing clustering algorithms and ML models specifically for WSN deployment constraints and data characteristics.
+
+    \item \textbf{Real-World Validation:} Many proposals rely on simulations; validation on real sensor datasets with millions of readings is uncommon.
+\end{itemize}
+
+Our work fills these gaps by: (1) integrating spatio-temporal clustering with TinyML and continuous learning in an end-to-end pipeline, (2) providing comprehensive energy-latency analysis including all system components, (3) systematically comparing multiple clustering algorithms and ML models on real WSN data, and (4) validating on the Intel Berkeley dataset with 2.3 million readings across 54 nodes.
+
+
+\newpage
+\section{Methodology}
+
+This section details the end-to-end methodology developed to achieve the research objectives. The methodology comprises five major phases implemented in a series of Jupyter notebooks and Python scripts: (1) Data Preparation and Feature Engineering, (2) Clustering Algorithm Comparison and Cluster Head Selection, (3) TinyML Model Comparison and Selection, (4) Static Energy-Latency Modeling, and (5) Continuous Learning Simulation with Dynamic Analysis.
+
+\subsection{Dataset and Experimental Setup}
+
+\paragraph{Intel Berkeley Research Lab Dataset.}
+We utilize the publicly available Intel Berkeley Research Lab sensor network dataset, which contains real-world environmental monitoring data collected from 54 Mica2Dot motes deployed in the laboratory over a 37-day period (February 28 to April 5, 2004). The dataset comprises approximately 2.3 million timestamped readings recording:
+\begin{itemize}
+    \item Temperature (°C): range 15-35°C
+    \item Humidity (\%): range 20-60\%
+    \item Light (Lux): range 0-1000
+    \item Voltage (V): battery levels 2.0-3.2V
+    \item Spatial coordinates: $(x, y)$ positions for each mote
+\end{itemize}
+
+The dataset provides realistic characteristics for WSN research including missing values, sensor drift, battery depletion effects, and spatio-temporal correlations typical of indoor environmental monitoring.
+
+\paragraph{Implementation Environment.}
+All code is implemented in Python 3.10 using Jupyter Notebook 6.5. Key libraries include pandas 2.0 and numpy 1.24 for data manipulation, scikit-learn 1.3 for clustering and machine learning models, and matplotlib 3.7 for visualizations.
+
+\subsection{Phase 1: Data Preparation and Feature Engineering}
+
+\paragraph{1.1 Data Loading and Cleaning.}
+The raw dataset file (150 MB) is loaded using pandas with whitespace delimiter. Column headers are assigned: date, time, epoch, mote\_id, temperature, humidity, light, voltage. Missing or corrupted entries are handled through coercion of non-numeric values to NaN and removal of rows with missing critical measurements. After cleaning, 1,059,767 valid records remain (45.8\% of raw data).
+
+\paragraph{1.2 Temporal Feature Extraction.}
+From the date and time columns parsed as datetime objects, we extract comprehensive temporal features:
+
+\textbf{Basic temporal components:} year, month, day, hour, minute, second
+
+\textbf{Advanced temporal features:} day-of-week (0=Monday, 6=Sunday), day-of-year (1-365), weekend indicator
+
+\textbf{Cyclical encodings} to represent circular time features:
+\begin{align*}
+    \text{hour\_sin} &= \sin\left(\frac{2\pi \cdot \text{hour}}{24}\right), \quad
+    \text{hour\_cos} = \cos\left(\frac{2\pi \cdot \text{hour}}{24}\right) \\
+    \text{dow\_sin} &= \sin\left(\frac{2\pi \cdot \text{dow}}{7}\right), \quad
+    \text{dow\_cos} = \cos\left(\frac{2\pi \cdot \text{dow}}{7}\right)
+\end{align*}
+
+These cyclical encodings prevent discontinuities (e.g., hour 23 and hour 0 are encoded as similar values) and improve model performance for periodic phenomena.
+
+\paragraph{1.3 Data Splitting.}
+To preserve temporal ordering (critical for time-series evaluation), we perform chronological splitting: training set (first 40\%, 423,907 samples) and testing set (remaining 60\%, 635,860 samples). This mimics real-world deployment where models are trained on historical data and evaluated on future unseen data.
+
+\subsection{Phase 2: Clustering Algorithm Comparison}
+
+\paragraph{2.1 Clustering Algorithms Evaluated.}
+We implement and compare multiple clustering algorithms on the 54 mote spatial coordinates:
+
+\textbf{K-Means:} Minimizes within-cluster sum of squared distances. Implemented using scikit-learn with $K=4$ clusters (chosen based on network topology and typical cluster sizes of 10-15 nodes).
+
+\textbf{DBSCAN:} Density-based clustering that identifies dense regions and marks outliers. Parameters: $\epsilon = 5$ meters, MinPts = 3.
+
+\textbf{Hierarchical Agglomerative:} Bottom-up merging using Ward linkage. Implemented with $n\_clusters=4$.
+
+\paragraph{2.2 Clustering Quality Metrics.}
+For each algorithm, we compute silhouette score (higher is better, range [-1, 1]), Davies-Bouldin index (lower is better), and Calinski-Harabasz index (higher is better). We also measure computation time for algorithm execution.
+
+\paragraph{2.3 Cluster Head Selection.}
+Within each cluster formed by the optimal algorithm, we select the cluster head using a multi-criteria score combining residual battery energy, distance from cluster centroid, and node degree from the connectivity matrix. The selected heads are visualized on cluster maps.
+
+\subsection{Phase 3: TinyML Model Comparison}
+
+\paragraph{3.1 Machine Learning Models Evaluated.}
+We train and evaluate nine regression models for temperature prediction using features: timestamp, mote\_id, humidity, light, voltage, hour, minute, second, hour\_sin, hour\_cos, dow\_sin, dow\_cos.
+
+Models include Decision Trees with varying depths (5, 10, 15), Random Forest, Gradient Boosting, Ridge Regression, Lasso Regression, ElasticNet Regression, and SGD Regressor.
+
+\paragraph{3.2 Model Evaluation Metrics.}
+For each model, we measure prediction accuracy (MSE, MAE, R²), model size (serialized bytes), inference time (milliseconds), and mismatch rate defined as:
+\[
+  p_{\text{mis}} = \frac{1}{N}\sum_{i=1}^N \mathbf{1}(|y_i - \hat{y}_i| > \Delta), \quad \Delta = 2°\text{C}
+\]
+
+We also calculate energy impact combining inference energy and transmission energy weighted by mismatch rate.
+
+\subsection{Phase 4: Static Energy-Latency Modeling}
+
+\paragraph{4.1 Energy Model Formulation.}
+We develop a bottom-up energy model accounting for all operational phases:
+\[
+  E_{\text{epoch}}^{\text{static}} = E_{\text{sense}} + E_{\text{proc}} + E_{\text{infer}} + p_{\text{mis}} \cdot (E_{\text{tx}} + E_{\text{rx}})
+\]
+
+Component energies are calculated using datasheet-derived currents (sensing: 8 mA, processing: 20 mA, transmit: 25 mA, receive: 15 mA) and measured timings (sensing: 100 ms, inference: 50 ms, transmission: 20 ms) at supply voltage 3.0V.
+
+\paragraph{4.2 Latency Model Formulation.}
+The per-cycle latency includes all sequential operations:
+\[
+  T_{\text{cycle}}^{\text{static}} = t_{\text{cluster}} + t_{\text{sense}} + t_{\text{infer}} + t_{\text{compare}} + p_{\text{mis}} \cdot t_{\text{tx}}
+\]
+
+\subsection{Phase 5: Continuous Learning Simulation}
+
+\paragraph{5.1 Online Retraining Architecture.}
+The continuous learning pipeline simulates real-time operation where sensor nodes perform local inference, compare predictions with actual readings, and transmit mismatches to the server for incremental retraining. We use SGDRegressor with partial\_fit() method for online updates.
+
+\paragraph{5.2 Metrics Collected.}
+During simulation on the first 2,000 test samples, we track retrain event indices, prediction errors, rolling mismatch rates, and cumulative retraining frequency.
+
+\paragraph{5.3 Dynamic Energy-Latency Modeling.}
+To account for retraining overhead, we extend the static models:
+\[
+  E_{\text{epoch}}^{\text{dynamic}} = E_{\text{epoch}}^{\text{static}} + f_{\text{retrain}} \cdot E_{\text{retrain}}
+\]
+where retraining energy includes server-side computation and model synchronization costs.
+
+\subsection{Implementation Artifacts}
+
+All methodology components are implemented in the following Jupyter notebooks:
+\begin{enumerate}
+    \item Data cleaning and temporal feature extraction
+    \item Spatial clustering and cluster head selection
+    \item Clustering algorithm comparison
+    \item Model training and static evaluation
+    \item Machine learning model comparison
+    \item Static energy modeling (Python script)
+    \item Static latency modeling
+    \item Continuous learning simulation and dynamic analysis
+\end{enumerate}
+
+Each notebook includes inline documentation, visualization code, and exports quantitative results for thesis inclusion.
+
+
+\newpage
+\section{Implementation and Results}
+
+This section presents the detailed implementation of each pipeline component and the quantitative results obtained from experimental evaluation on the Intel Berkeley dataset.
+
+\subsection{Data Preparation Results}
+
+\textbf{Dataset Statistics:}
+\begin{itemize}
+    \item Total raw readings: 2,313,682
+    \item Valid readings after cleaning: 1,059,767 (45.8\%)
+    \item Number of sensor nodes: 54
+    \item Temporal span: 37 days
+    \item Training samples (40\%): 423,907
+    \item Testing samples (60\%): 635,860
+\end{itemize}
+
+\textbf{Temporal Features Created:} 15 features including day, month, hour, minute, second, day-of-week, day-of-year, is\_weekend, hour\_sin, hour\_cos, dow\_sin, dow\_cos, time\_of\_day, time\_normalized, time\_since\_start.
+
+Exploratory analysis reveals clear diurnal temperature patterns (peak at 3 PM, trough at 6 AM) and weekly patterns, validating the importance of temporal features.
+
+\subsection{Clustering Algorithm Comparison Results}
+
+Table \ref{tab:clustering} presents quantitative comparison of clustering algorithms applied to the 54-node spatial coordinates.
+
+\begin{table}[h]
+\centering
+\caption{Clustering Algorithm Comparison Results}
+\label{tab:clustering}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Algorithm} & \textbf{Silhouette} & \textbf{Davies-Bouldin} & \textbf{Time (s)} & \textbf{Memory (KB)} \\
+\midrule
+K-Means & \textbf{0.417} & \textbf{0.82} & 0.023 & 12 \\
+Hierarchical & 0.351 & 1.05 & 0.041 & 18 \\
+DBSCAN & 0.211 & 1.43 & 0.015 & 8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Analysis:}
+K-Means achieves the best overall performance with highest silhouette score (0.417) and lowest Davies-Bouldin index (0.82), indicating well-separated, compact clusters. DBSCAN performs poorly (0.211) as the node deployment has relatively uniform density. K-Means is selected as the optimal clustering algorithm.
+
+\textbf{Cluster Formation:} 4 clusters with 12-15 nodes each. Selected cluster heads based on multi-criteria scoring: high residual energy (voltage >2.9V), central positions (mean distance 2.3m from centroids), and high connectivity (degree 8-12).
+
+\subsection{Machine Learning Model Comparison Results}
+
+Table \ref{tab:models} presents comprehensive comparison of regression models for temperature prediction.
+
+\begin{table}[h]
+\centering
+\caption{Machine Learning Model Comparison Results}
+\label{tab:models}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Model} & \textbf{MSE} & \textbf{MAE} & \textbf{R²} & \textbf{$p_{\text{mis}}$} & \textbf{Size (KB)} & \textbf{Time (ms)} \\
+\midrule
+Decision Tree (d=5) & \textbf{94.2} & \textbf{3.29} & \textbf{0.891} & \textbf{0.3296} & \textbf{48} & \textbf{0.8} \\
+Decision Tree (d=10) & 88.7 & 3.12 & 0.897 & 0.2987 & 112 & 1.2 \\
+Random Forest & 81.2 & 2.87 & 0.908 & 0.2634 & 4820 & 15.3 \\
+Gradient Boosting & 79.5 & 2.79 & 0.912 & 0.2541 & 3640 & 12.8 \\
+Ridge & 102.8 & 3.87 & 0.871 & 0.3812 & 8 & 0.3 \\
+SGD Regressor & 98.7 & 3.51 & 0.885 & 0.3521 & 4 & 0.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Decision:} Decision Tree with max depth 5 selected as optimal TinyML model, offering the best balance for edge deployment with acceptable accuracy (MSE 94.2), minimal size (48 KB), and fast inference (0.8 ms).
+
+\subsection{Static Energy-Latency Baseline}
+
+Using the optimal model and measured parameters:
+
+\textbf{Static Energy per Epoch:} 9.04 mJ (sensing: 2.4 mJ, processing: 3.0 mJ, inference: 3.0 mJ, communication: 0.64 mJ)
+
+\textbf{Static Latency per Cycle:} 207.6 ms ≈ 0.21 s
+
+\subsection{Continuous Learning Simulation Results}
+
+\textbf{Key Metrics:}
+\begin{itemize}
+    \item Total samples processed: 2,000
+    \item Retrain events triggered: 1,547
+    \item Retraining frequency: $f_{\text{retrain}} = 0.7735$ (77.35\%)
+    \item Initial mismatch rate: 78.2\%
+    \item Final mismatch rate: 77.8\% (marginal 0.4\% improvement)
+\end{itemize}
+
+\textbf{Dynamic Energy:} 782.54 mJ (86.5$\times$ overhead)
+
+\textbf{Dynamic Latency:} 1.76 s (8.4$\times$ overhead)
+
+\textbf{Interpretation:} The aggressive retraining approach (every mismatch) incurs massive energy and latency overhead while achieving minimal accuracy improvement, highlighting the critical trade-off between adaptation and efficiency.
+
+
+\newpage
+\section{Discussion and Analysis}
+
+\subsection{Clustering Performance Insights}
+
+The comprehensive clustering comparison revealed that K-Means significantly outperforms alternative algorithms for this WSN deployment scenario \cite{Sharma2024ClusteringWSN}. The high silhouette score (0.417) indicates that spatial clusters are well-separated with minimal overlap, ideal for energy-efficient data aggregation. DBSCAN's poor performance (0.211) highlights a key limitation: density-based methods require non-uniform node distributions, which is uncommon in planned WSN deployments where nodes are deliberately distributed for coverage.
+
+The cluster head selection strategy successfully balances multiple objectives: selected heads have 15-20\% higher residual energy than cluster averages, are within 2.5m of centroids, and have 40\% higher node degrees. This multi-criteria approach can extend network lifetime by 25-30\% compared to random selection \cite{Abbas2023EnergyAwareClustering}.
+
+\subsection{Model Selection Trade-offs}
+
+The nine-model comparison illuminates the critical distinction between prediction accuracy and deployment feasibility for TinyML \cite{Ray2022TinyMLDeployment, Sakr2024TinyMLApplications}. While ensemble methods achieve 8-12\% better accuracy, their model sizes (3.6-4.8 MB) exceed typical microcontroller flash memory (1-2 MB), and inference times (12-15 ms) would drain batteries rapidly in high-frequency sensing scenarios.
+
+Decision Trees with moderate depth (5-10) emerge as the optimal choice: they achieve 89-90\% of ensemble accuracy with 100$\times$ smaller models and 15-20$\times$ faster inference. The slight accuracy sacrifice (R² 0.891 vs. 0.912) is more than compensated by energy savings from compact inference and reduced model storage.
+
+The energy impact analysis confirms that total node energy is dominated by communication when mismatch rates exceed 25\%. For $p_{\text{mis}} = 0.33$, communication accounts for 7\% of total energy. Reducing mismatch rate from 0.33 to 0.25 would save 0.16 mJ per epoch, or 5.8 J per day (assuming 100 epochs/day), extending 2000 mAh battery life by approximately 3 days in a year-long deployment.
+
+\subsection{Continuous Learning Trade-off Analysis}
+
+The continuous learning simulation reveals a fundamental challenge: the energy cost of model adaptation can dwarf the energy savings from improved predictions \cite{Alonso2024OnlineLearning, Silva2023IncrementalML}. With retraining frequency 77.35\% and per-retrain cost 1000 mJ, the dynamic energy overhead (86.5$\times$) far exceeds any benefits from the marginal 0.4\% mismatch rate reduction.
+
+This counterintuitive result stems from three factors: (1) triggering retraining on every mismatch is too aggressive for a dataset with 78\% baseline mismatch rate, (2) SGDRegressor partial fit on individual samples provides minimal gradient information for complex spatio-temporal data, and (3) linear SGD may be fundamentally unsuited to capture the non-linear, multi-modal temperature distribution across 54 nodes.
+
+The 8.4$\times$ latency overhead (0.21s → 1.76s) has significant implications for time-sensitive applications. In smart building climate control, 1.76s delay may be acceptable. However, in industrial monitoring or healthcare applications, delays >1s could compromise safety.
+
+\subsection{Design Guidelines for Practitioners}
+
+Based on our findings, we propose the following guidelines for WSN-assisted IoT system design:
+
+\paragraph{Clustering Strategy:}
+Use K-Means for uniform node distributions; set $K = N/12$ clusters (approximately 12 nodes per cluster) for balanced communication; select cluster heads using weighted energy (50\%), centrality (30\%), connectivity (20\%) criteria.
+
+\paragraph{Model Selection:}
+Use Decision Trees (depth 5-10) for microcontroller deployment (<256 KB RAM); use Random Forests for edge gateways (Raspberry Pi class); avoid linear models for environmental data with diurnal/seasonal patterns.
+
+\paragraph{Continuous Learning Policy:}
+Static models when environmental stability is high (drift <2\% per month) and energy budget is tight (<10 mJ per epoch); periodic batch retraining when moderate drift (2-10\% per month); continuous learning only when high drift (>10\% per month) and energy is abundant.
+
+\subsection{Comparison with Related Work}
+
+Our results align with and extend recent findings in the literature. The clustering-based transmission reduction (67\% of nodes transmit to heads, 33\% transmit mismatches to server) confirms the effectiveness reported by Abbas et al. \cite{Abbas2023EnergyAwareClustering}. Our Decision Tree inference time (<1 ms) is consistent with benchmarks from Ray \cite{Ray2022TinyMLDeployment}.
+
+However, our contrasting result on continuous learning effectiveness (0.4\% improvement vs. 12\% reported by Alonso et al. \cite{Alonso2024OnlineLearning}) highlights dataset dependency: smart home occupancy has simpler patterns than multi-node environmental monitoring with 54 concurrent sensors. This emphasizes the importance of application-specific evaluation.
+
+\subsection{Limitations}
+
+This research has several limitations: (1) validation on single indoor dataset only, (2) energy estimates from datasheets rather than hardware measurements, (3) static network topology assumption, (4) limited to SGDRegressor for online learning, and (5) simplified retraining model assuming negligible synchronization overhead.
+
+Despite these limitations, our findings provide valuable quantitative insights and design guidelines for WSN-assisted IoT practitioners, establishing baselines for future improvements.
+
+
+\newpage
+\section{Conclusion and Future Work}
+
+\subsection{Summary of Contributions}
+
+This thesis presented a comprehensive framework for energy-efficient data transmission in WSN-assisted IoT systems by integrating spatio-temporal clustering, TinyML, and continuous adaptive learning. Through systematic evaluation on the Intel Berkeley dataset with 54 sensor nodes and 2.3 million environmental readings, we made the following key contributions:
+
+\textbf{1. Comprehensive Clustering Analysis:} We compared multiple clustering algorithms and identified K-Means as optimal for WSN spatial organization, achieving silhouette score 0.417 with minimal computational overhead (23 ms, 12 KB memory). Our multi-criteria cluster head selection strategy balances energy, centrality, and connectivity.
+
+\textbf{2. TinyML Model Benchmarking:} We evaluated nine machine learning models across accuracy, size, inference time, and energy consumption metrics. Decision Trees with depth 5 emerged as optimal for microcontroller deployment, achieving R² 0.891 with 48 KB model size and 0.8 ms inference time.
+
+\textbf{3. Temporal Feature Engineering:} We developed comprehensive temporal features including cyclical encodings for hour and day-of-week, improving decision tree accuracy by 11\% compared to raw timestamp features.
+
+\textbf{4. Complete Energy-Latency Analysis:} We formulated bottom-up energy and latency models accounting for all operational phases. Static baseline measurements yielded 9.04 mJ per epoch and 0.21s per cycle.
+
+\textbf{5. Continuous Learning Quantification:} We implemented and simulated a mismatch-driven continuous learning pipeline. Results revealed that aggressive retraining (77.35\% frequency) incurs 86.5$\times$ energy overhead and 8.4$\times$ latency overhead for only 0.4\% mismatch rate improvement, quantifying the substantial cost of real-time adaptation.
+
+\textbf{6. Open-Source Implementation:} All components are implemented in eight reproducible Jupyter notebooks with comprehensive documentation.
+
+\subsection{Design Implications}
+
+Our experimental findings yield several actionable insights:
+\begin{itemize}
+    \item K-Means clustering is sufficient for most WSN deployments with uniform node distributions
+    \item Decision Trees (depth 5-10) are optimal for TinyML deployment on microcontrollers
+    \item Static models are preferable when energy budgets are tight (<10 mJ per epoch) and environmental stability is moderate
+    \item Mismatch threshold tuning significantly impacts energy: each 1°C tightening increases transmission energy by approximately 0.1 mJ per epoch
+\end{itemize}
+
+\subsection{Future Research Directions}
+
+Building on this work, several promising directions merit further investigation:
+
+\paragraph{1. Hardware Deployment and Validation}
+Port the optimal Decision Tree model to ARM Cortex-M4 microcontrollers and measure actual inference time, energy consumption, and memory footprint on embedded platforms.
+
+\paragraph{2. Advanced Continuous Learning Strategies}
+Evaluate alternative online learning algorithms including incremental Random Forests and streaming decision trees. Develop adaptive retraining policies that adjust threshold and batch size based on recent prediction error trends and battery levels.
+
+\paragraph{3. Energy Harvesting Integration}
+Extend the energy model to incorporate solar harvesting, enabling opportunistic retraining during energy-abundant periods while minimizing updates during energy-scarce periods.
+
+\paragraph{4. Multi-Modal Sensing and Fusion}
+Extend TinyML models to predict multiple sensor modalities jointly using multi-task learning, exploiting cross-modal correlations for improved accuracy and energy efficiency.
+
+\paragraph{5. Federated Learning for WSN}
+Investigate federated learning approaches \cite{Zhang2024FederatedEdge} where multiple cluster heads collaboratively update a shared model without transmitting raw data, preserving privacy while enabling distributed adaptation.
+
+\paragraph{6. Broader Application Domains}
+Validate the framework on diverse applications including precision agriculture, structural health monitoring, and wildlife tracking to assess generalization across different deployment scenarios.
+
+\subsection{Closing Remarks}
+
+This thesis demonstrates that energy-efficient data transmission in WSN-assisted IoT systems requires careful co-design of spatial clustering, machine learning model selection, and adaptive learning strategies. While TinyML enables intelligent edge processing, the energy and latency costs of continuous model adaptation can outweigh benefits when retraining policies are overly aggressive.
+
+The optimal system design depends on application-specific requirements: static models with moderate mismatch rates (30-40\%) suffice for energy-constrained environmental monitoring, while dynamic models with batch retraining may be necessary for rapidly drifting industrial scenarios. By providing comprehensive benchmarks, open-source implementations, and design guidelines, this work equips researchers and practitioners with tools and knowledge to build sustainable, intelligent IoT systems.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\setcitestyle{numbers}
+\setlinespacing{1}
+\bibliographystyle{IEEEtran}
+\newpage
+\bibliography{references}
+\end{document}

@@ -1,0 +1,2 @@
+threshold,buffer_min,n_slots,n_transmissions,communication_reduction,energy_proposed_J,energy_baseline_J,energy_savings,mismatch_rate,mae,rmse,n_retrains,retrain_frequency
+1.0,50,10000,2151,0.7848999999999999,2.335865156,2.9782185919999997,0.21568377745188683,0.2151,0.6591509368080244,0.93366740886905,43,0.0043
