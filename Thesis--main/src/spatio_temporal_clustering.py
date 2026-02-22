@@ -4,21 +4,16 @@ Step 2: Spatio-Temporal Clustering of WSN Nodes.
 Clusters 54 sensor nodes using BOTH:
   - Spatial features: physical (x, y) coordinates
   - Temporal features: per-node behavioral patterns extracted from
-    server training data (std_temp, diurnal_amplitude)
+    server training data (std_temp, diurnal_amplitude, light_mean)
 
 This is the KEY NOVELTY vs. purely spatial clustering (LEACH, etc.).
-Nodes with similar locations AND similar sensing patterns are grouped
-together, enabling better prediction and less intra-cluster variance.
 
-Provides comparison between:
-  - Pure spatial K-Means (baseline)
-  - Spatio-temporal K-Means (proposed)
+Two-phase approach:
+  Phase 1: Weighted K-Means on combined spatio-temporal features
+  Phase 2: Spatial coherence enforcement — fixes isolated outlier nodes
+           by majority-vote of their K nearest spatial neighbors
 
-Fair evaluation: both methods are evaluated in the SAME combined
-feature space so silhouette / Davies-Bouldin scores are comparable.
-
-Feature weighting: spatial features are scaled by SPATIAL_WEIGHT_ALPHA
-to balance the influence of spatial vs temporal dimensions.
+Fair evaluation: both methods evaluated in the SAME combined feature space.
 """
 
 import pandas as pd
@@ -36,6 +31,11 @@ from config import (
     SPATIAL_WEIGHT_ALPHA, CLUSTERING_TEMPORAL_FEATURES
 )
 
+# Spatial coherence parameters
+COHERENCE_KNN = 3          # Number of nearest spatial neighbors to check
+COHERENCE_MIN_AGREE = 3    # Minimum neighbors that must agree to reassign
+COHERENCE_MIN_CLUSTER = 8  # Don't shrink any cluster below this size
+
 
 def load_mote_locations(path=MOTE_LOCS_PATH):
     """Load physical coordinates of 54 sensor nodes."""
@@ -51,15 +51,15 @@ def extract_temporal_profiles(server_df, motes):
 
     For each node, compute:
       - mean_temp: average temperature reading
-      - std_temp: temperature variability (high CV — good discriminator)
+      - std_temp: temperature variability (CV=27.9%)
       - mean_humidity: average humidity
-      - diurnal_amplitude: difference between daytime and nighttime avg temp
-        (highest CV — best discriminator for indoor WSN)
+      - diurnal_amplitude: day-night temperature swing (CV=35.4%)
+      - light_mean: average light exposure (CV=44.6% — best discriminator)
     """
     print("Extracting per-node temporal profiles...")
 
     # Ensure numeric columns
-    for col in ["temperature", "humidity"]:
+    for col in ["temperature", "humidity", "light"]:
         if col in server_df.columns:
             server_df[col] = pd.to_numeric(server_df[col], errors="coerce")
 
@@ -68,19 +68,20 @@ def extract_temporal_profiles(server_df, motes):
         node_data = server_df[server_df["mote_id"] == mote_id]
 
         if len(node_data) < 10:
-            # Node has too few readings; mark for median imputation below
             profiles.append({
                 "mote_id": mote_id,
                 "mean_temp": np.nan,
                 "std_temp": np.nan,
                 "mean_humidity": np.nan,
-                "diurnal_amplitude": np.nan
+                "diurnal_amplitude": np.nan,
+                "light_mean": np.nan
             })
             continue
 
         mean_temp = node_data["temperature"].mean()
         std_temp = node_data["temperature"].std()
         mean_humidity = node_data["humidity"].mean()
+        light_mean = node_data["light"].mean()
 
         # Diurnal amplitude: daytime (8-20h) vs nighttime (0-7, 21-23)
         day_mask = node_data["hour"].between(8, 20)
@@ -95,17 +96,20 @@ def extract_temporal_profiles(server_df, motes):
             "mean_temp": mean_temp,
             "std_temp": std_temp,
             "mean_humidity": mean_humidity,
-            "diurnal_amplitude": diurnal_amp
+            "diurnal_amplitude": diurnal_amp,
+            "light_mean": light_mean
         })
 
     profiles_df = pd.DataFrame(profiles)
 
-    # Impute missing values with median (instead of global mean / 0.0)
-    for col in ["mean_temp", "std_temp", "mean_humidity", "diurnal_amplitude"]:
+    # Impute missing values with median
+    for col in ["mean_temp", "std_temp", "mean_humidity",
+                 "diurnal_amplitude", "light_mean"]:
         median_val = profiles_df[col].median()
         n_missing = profiles_df[col].isna().sum()
         if n_missing > 0:
-            print(f"  Imputed {n_missing} missing values in {col} with median={median_val:.2f}")
+            print(f"  Imputed {n_missing} missing values in "
+                  f"{col} with median={median_val:.2f}")
             profiles_df[col] = profiles_df[col].fillna(median_val)
 
     print(f"  Computed temporal profiles for {len(profiles_df)} nodes")
@@ -114,11 +118,8 @@ def extract_temporal_profiles(server_df, motes):
 
 def _build_combined_features(motes, profiles_df, alpha=SPATIAL_WEIGHT_ALPHA):
     """
-    Build the combined spatio-temporal feature matrix used for both
-    clustering and fair evaluation.
-
-    Returns (X_scaled, feature_cols) where spatial features have been
-    weighted by alpha after standardization.
+    Build the combined spatio-temporal feature matrix.
+    Spatial features are weighted by alpha after standardization.
     """
     merged = motes.merge(profiles_df, on="mote_id")
     spatial_cols = ["x", "y"]
@@ -130,11 +131,59 @@ def _build_combined_features(motes, profiles_df, alpha=SPATIAL_WEIGHT_ALPHA):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Apply spatial weight: multiply spatial columns by alpha
+    # Apply spatial weight
     n_spatial = len(spatial_cols)
     X_scaled[:, :n_spatial] *= alpha
 
     return X_scaled, feature_cols, scaler
+
+
+def _enforce_spatial_coherence(labels, coords, n_clusters=NUM_CLUSTERS):
+    """
+    Post-processing: fix spatially isolated outlier nodes.
+
+    For each node, check its K nearest spatial neighbors. If ALL K
+    neighbors belong to a different cluster (node is spatially isolated),
+    reassign it to the majority cluster of its neighbors.
+
+    Only reassigns if it won't shrink any cluster below minimum size.
+    """
+    labels = labels.copy()
+    n = len(labels)
+    total_fixed = 0
+
+    for iteration in range(5):
+        changed = 0
+        for i in range(n):
+            # Find K nearest spatial neighbors
+            dists = np.sqrt(
+                (coords[:, 0] - coords[i, 0]) ** 2 +
+                (coords[:, 1] - coords[i, 1]) ** 2
+            )
+            dists[i] = np.inf
+            knn_idx = np.argsort(dists)[:COHERENCE_KNN]
+            knn_labels = labels[knn_idx]
+
+            own_cluster = labels[i]
+            unique, counts = np.unique(knn_labels, return_counts=True)
+            majority_cluster = unique[np.argmax(counts)]
+            majority_count = np.max(counts)
+
+            # Reassign only if all/nearly-all neighbors agree
+            if (majority_cluster != own_cluster and
+                    majority_count >= COHERENCE_MIN_AGREE):
+                if np.sum(labels == own_cluster) > COHERENCE_MIN_CLUSTER:
+                    labels[i] = majority_cluster
+                    changed += 1
+
+        total_fixed += changed
+        if changed == 0:
+            break
+
+    if total_fixed > 0:
+        print(f"  Spatial coherence: fixed {total_fixed} outlier nodes")
+
+    return labels
 
 
 def spatial_clustering(motes, n_clusters=NUM_CLUSTERS):
@@ -149,13 +198,17 @@ def spatial_clustering(motes, n_clusters=NUM_CLUSTERS):
     return labels
 
 
-def spatio_temporal_clustering(X_combined, n_clusters=NUM_CLUSTERS):
+def spatio_temporal_clustering(X_combined, coords, n_clusters=NUM_CLUSTERS):
     """
-    Proposed: cluster using weighted spatial + temporal features.
-    X_combined is the pre-built, weighted, scaled feature matrix.
+    Proposed: two-phase spatio-temporal clustering.
+    Phase 1: Weighted K-Means on combined features.
+    Phase 2: Spatial coherence enforcement.
     """
     km = KMeans(n_clusters=n_clusters, random_state=RANDOM_SEED, n_init=10)
     labels = km.fit_predict(X_combined)
+
+    # Phase 2: enforce spatial coherence
+    labels = _enforce_spatial_coherence(labels, coords, n_clusters)
 
     return labels
 
@@ -166,28 +219,30 @@ def evaluate_in_same_space(X_combined, labels_spatial, labels_st):
     label sets in the SAME combined feature space.
     """
     metrics = {}
-    for name, labels in [("spatial", labels_spatial), ("spatio_temporal", labels_st)]:
+    for name, labels in [("spatial", labels_spatial),
+                          ("spatio_temporal", labels_st)]:
         sil = silhouette_score(X_combined, labels)
         db = davies_bouldin_score(X_combined, labels)
         metrics[name] = {"silhouette": sil, "davies_bouldin": db}
     return metrics
 
 
-def compute_intra_cluster_temp_variance(server_df, motes, labels, label_col="cluster"):
+def compute_intra_cluster_temp_variance(server_df, motes, labels,
+                                         label_col="cluster"):
     """
-    Downstream task metric: compute average intra-cluster temperature
-    variance. Lower = nodes in the same cluster behave more similarly
-    = better for TinyML prediction.
+    Downstream task metric: average intra-cluster temperature variance.
+    Lower = nodes in the same cluster behave more similarly.
     """
     motes_copy = motes.copy()
     motes_copy[label_col] = labels
 
     cluster_variances = []
     for c in sorted(motes_copy[label_col].unique()):
-        member_ids = motes_copy.loc[motes_copy[label_col] == c, "mote_id"].values
+        member_ids = motes_copy.loc[
+            motes_copy[label_col] == c, "mote_id"
+        ].values
         cluster_data = server_df[server_df["mote_id"].isin(member_ids)]
         if len(cluster_data) > 0:
-            # Variance of temperature readings within this cluster
             cluster_variances.append(cluster_data["temperature"].var())
 
     return np.mean(cluster_variances)
@@ -201,7 +256,9 @@ def compute_cluster_stats(motes, labels, label_name="cluster"):
     for c in sorted(motes_copy["cluster"].unique()):
         members = motes_copy[motes_copy["cluster"] == c]
         centroid = members[["x", "y"]].mean().values
-        dists = np.sqrt(((members[["x", "y"]].values - centroid) ** 2).sum(axis=1))
+        dists = np.sqrt(
+            ((members[["x", "y"]].values - centroid) ** 2).sum(axis=1)
+        )
         stats.append({
             "cluster": c,
             "size": len(members),
@@ -216,12 +273,10 @@ def compute_cluster_stats(motes, labels, label_name="cluster"):
 def run_clustering(server_df=None):
     """
     Execute clustering comparison:
-      1. Pure spatial (baseline)
-      2. Spatio-temporal (proposed)
+      1. Pure spatial K-Means (baseline)
+      2. Spatio-temporal K-Means + coherence (proposed)
 
     Both evaluated in the SAME combined feature space for fair comparison.
-    Also computes downstream intra-cluster temperature variance.
-
     Returns motes DataFrame with cluster assignments.
     """
     print("=" * 65)
@@ -236,8 +291,11 @@ def run_clustering(server_df=None):
     # Extract temporal profiles
     profiles_df = extract_temporal_profiles(server_df, motes)
 
-    # Build combined feature matrix (used for ST clustering AND fair eval)
-    X_combined, feature_cols, scaler = _build_combined_features(motes, profiles_df)
+    # Build combined feature matrix
+    X_combined, feature_cols, scaler = _build_combined_features(
+        motes, profiles_df
+    )
+    coords = motes[["x", "y"]].values
     print(f"\n  Combined features: {feature_cols}")
     print(f"  Spatial weight alpha: {SPATIAL_WEIGHT_ALPHA}")
 
@@ -247,26 +305,35 @@ def run_clustering(server_df=None):
     spatial_stats = compute_cluster_stats(motes, spatial_labels)
     print(f"  Cluster sizes: {spatial_stats['size'].tolist()}")
 
-    # --- Proposed: spatio-temporal ---
-    print("\n[PROPOSED] Spatio-Temporal K-Means clustering...")
-    st_labels = spatio_temporal_clustering(X_combined)
+    # --- Proposed: spatio-temporal + coherence ---
+    print("\n[PROPOSED] Spatio-Temporal K-Means + Spatial Coherence...")
+    st_labels = spatio_temporal_clustering(X_combined, coords)
     st_stats = compute_cluster_stats(motes, st_labels)
     print(f"  Cluster sizes: {st_stats['size'].tolist()}")
 
+    n_diff = np.sum(st_labels != spatial_labels)
+    print(f"  Nodes different from spatial-only: {n_diff}")
+
     # --- Fair evaluation in same combined space ---
-    print("\n[FAIR EVALUATION] Both methods evaluated in combined feature space")
-    fair_metrics = evaluate_in_same_space(X_combined, spatial_labels, st_labels)
+    print("\n[FAIR EVALUATION] Both methods evaluated in combined "
+          "feature space")
+    fair_metrics = evaluate_in_same_space(
+        X_combined, spatial_labels, st_labels
+    )
 
     spatial_metrics = fair_metrics["spatial"]
     st_metrics = fair_metrics["spatio_temporal"]
 
-    print(f"  Spatial-Only    -> Silhouette: {spatial_metrics['silhouette']:.4f}  "
+    print(f"  Spatial-Only    -> Silhouette: "
+          f"{spatial_metrics['silhouette']:.4f}  "
           f"DB: {spatial_metrics['davies_bouldin']:.4f}")
-    print(f"  Spatio-Temporal -> Silhouette: {st_metrics['silhouette']:.4f}  "
+    print(f"  Spatio-Temporal -> Silhouette: "
+          f"{st_metrics['silhouette']:.4f}  "
           f"DB: {st_metrics['davies_bouldin']:.4f}")
 
-    # --- Downstream task metric: intra-cluster temperature variance ---
-    print("\n[DOWNSTREAM] Intra-cluster temperature variance (lower = better)")
+    # --- Downstream metric: intra-cluster temperature variance ---
+    print("\n[DOWNSTREAM] Intra-cluster temperature variance "
+          "(lower = better)")
     spatial_var = compute_intra_cluster_temp_variance(
         server_df, motes, spatial_labels
     )
@@ -282,8 +349,10 @@ def run_clustering(server_df=None):
     print("\n" + "-" * 50)
     print("COMPARISON: Spatial vs Spatio-Temporal (fair eval)")
     print("-" * 50)
-    sil_better = "PROPOSED" if st_metrics["silhouette"] > spatial_metrics["silhouette"] else "BASELINE"
-    db_better = "PROPOSED" if st_metrics["davies_bouldin"] < spatial_metrics["davies_bouldin"] else "BASELINE"
+    sil_better = ("PROPOSED" if st_metrics["silhouette"] >
+                  spatial_metrics["silhouette"] else "BASELINE")
+    db_better = ("PROPOSED" if st_metrics["davies_bouldin"] <
+                 spatial_metrics["davies_bouldin"] else "BASELINE")
     var_better = "PROPOSED" if st_var < spatial_var else "BASELINE"
     print(f"  Silhouette (higher=better):    {sil_better} wins")
     print(f"  Davies-Bouldin (lower=better): {db_better} wins")
@@ -308,7 +377,8 @@ def run_clustering(server_df=None):
     )
 
     print("\n" + "=" * 65)
-    print("Clustering complete. Using SPATIO-TEMPORAL clusters for simulation.")
+    print("Clustering complete. Using SPATIO-TEMPORAL clusters "
+          "for simulation.")
     print("=" * 65)
 
     return motes, profiles_df, {

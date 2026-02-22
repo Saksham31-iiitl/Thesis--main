@@ -107,13 +107,17 @@ FEATURE_COLUMNS = [
 # SPATIO-TEMPORAL CLUSTERING
 # ──────────────────────────────────────────────────────────────────────
 # Spatial weight multiplier: balances 2 spatial vs N temporal features.
-# sqrt(n_temporal / n_spatial) = sqrt(2/2) = 1.0 for 2 temporal features,
-# but we use 1.5 to give spatial proximity slight emphasis in indoor WSN.
+# Equal weight per feature after StandardScaler; temporal features get
+# sufficient influence to differentiate behavioral patterns.
 SPATIAL_WEIGHT_ALPHA = 1.5
 
 # Temporal features to use for clustering (only high-CV, discriminative ones)
-# Dropped mean_temp (CV=4.3%) and mean_humidity (CV=5.2%) — too uniform indoors
-CLUSTERING_TEMPORAL_FEATURES = ["std_temp", "diurnal_amplitude"]
+# Selected by Coefficient of Variation across 54 nodes:
+#   light_mean: CV=44.6% (best — sensors near windows vs corners)
+#   diurnal_amplitude: CV=35.4% (day-night temperature swing)
+#   std_temp: CV=27.9% (temperature variability)
+# Dropped: mean_temp (CV=4.3%), mean_humidity (CV=5.2%) — too uniform indoors
+CLUSTERING_TEMPORAL_FEATURES = ["std_temp", "diurnal_amplitude", "light_mean"]
 
 # ──────────────────────────────────────────────────────────────────────
 # CLUSTER HEAD SELECTION WEIGHTS
