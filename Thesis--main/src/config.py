@@ -130,4 +130,4 @@ CH_WEIGHT_DIST = 0.3      # gamma: weight for proximity to centroid
 # SIMULATION
 # ──────────────────────────────────────────────────────────────────────
 RANDOM_SEED = 42
-SIM_SAMPLE_LIMIT = 10000    # Max node-side samples to simulate (None = all)
+SIM_SAMPLE_LIMIT = 50000    # Max node-side samples to simulate (None = all)
