@@ -106,8 +106,6 @@ Desktop.ini
 *.swp
 *.swo
 
-# Large data files (optional - uncomment if you don't want to track large datasets)
-# *.txt
-# data.txt
-# realtime_data.txt
-# model_data.txt
+# Large data files (excluded due to GitHub file size limits)
+data/node_realtime_40.csv
+data/server_train_60.csv
