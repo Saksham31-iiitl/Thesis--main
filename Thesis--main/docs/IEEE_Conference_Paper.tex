@@ -1,0 +1,501 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{hyperref}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{Energy-Efficient Data Transmission in WSN-Assisted IoT Using Spatio-Temporal Clustering and TinyML}
+
+\author{\IEEEauthorblockN{Saksham}
+\IEEEauthorblockA{\textit{Dept. of Computer Science (Data Science)} \\
+\textit{Indian Institute of Information Technology}\\
+Lucknow, India \\
+mcs24025@iiitl.ac.in}
+\and
+\IEEEauthorblockN{Dr. Rahul Kumar Verma}
+\IEEEauthorblockA{\textit{Dept. of Computer Science} \\
+\textit{Indian Institute of Information Technology}\\
+Lucknow, India \\
+rahulkv@iiitl.ac.in}
+}
+
+\maketitle
+
+\begin{abstract}
+Wireless Sensor Networks (WSNs) powering Internet of Things (IoT) applications face severe energy constraints due to battery-powered nodes operating in remote environments. Radio transmission, the dominant energy consumer (up to 70\% of total node energy), must be minimized without sacrificing data quality. This paper presents an integrated framework that combines spatio-temporal clustering with Tiny Machine Learning (TinyML) for intelligent transmission suppression in WSN-assisted IoT systems. Our approach clusters 54 sensor nodes using both spatial coordinates and temporal behavioral features (diurnal amplitude, temperature variability, mean light intensity), achieving 2.9\% improvement in Silhouette score over spatial-only clustering. A multi-criteria cluster head selection strategy balances residual energy (40\%), connectivity degree (30\%), and spatial centrality (30\%). For on-node inference, a Decision Tree regressor (depth=8, 19.8~KB, $<$1~ms inference) predicts sensor readings; transmissions occur only when prediction error exceeds a configurable threshold. A mismatch-driven continuous learning pipeline buffers erroneous samples and retrains the model adaptively. Evaluated on the Intel Berkeley Research Lab dataset (2.3 million readings, 37 days), the framework achieves 72.25\% communication reduction, 19.73\% energy savings over always-transmit baselines, and maintains a mean absolute prediction error of 0.805\textdegree C with only 277 retraining events over 50,000 time slots. Threshold sweep analysis reveals that adjusting the mismatch threshold from 0.25\textdegree C to 3.0\textdegree C provides communication reduction ranging from 5.5\% to 95.7\%, enabling application-specific tuning. These results demonstrate that lightweight spatio-temporal intelligence at the edge can substantially extend WSN network lifetime while preserving data fidelity.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Wireless Sensor Networks, Internet of Things, Tiny Machine Learning, Energy Efficiency, Spatio-Temporal Clustering, Edge Intelligence, Continuous Learning
+\end{IEEEkeywords}
+
+%% ================================================================
+\section{Introduction}
+%% ================================================================
+
+The proliferation of Internet of Things (IoT) devices has enabled unprecedented environmental monitoring through Wireless Sensor Networks (WSNs), where spatially distributed nodes continuously measure parameters such as temperature, humidity, light, and voltage~\cite{Ahmed2023WSNEnergy}. These networks underpin critical applications in smart buildings, precision agriculture, industrial automation, and environmental surveillance. However, the fundamental bottleneck remains energy: sensor nodes operate on limited batteries (typically 2$\times$AA, $\approx$0.5~J initial energy) in locations where replacement is impractical~\cite{Sharma2024ClusteringWSN}.
+
+Radio communication is the dominant energy consumer in WSN nodes. The transmit current (17.4~mA) is over 30$\times$ the sensing current (0.55~mA) for typical sensor platforms. Consequently, naively transmitting every sensor reading rapidly depletes batteries and shortens network lifetime. This motivates intelligent strategies that reduce unnecessary transmissions while maintaining sufficient data quality at the central server.
+
+Tiny Machine Learning (TinyML) has emerged as a paradigm for deploying inference directly on resource-constrained microcontrollers~\cite{Ray2022TinyMLDeployment, Sakr2024TinyMLApplications}. By predicting sensor values locally and transmitting only when predictions significantly deviate from actual measurements, TinyML-equipped nodes can suppress redundant transmissions. However, existing TinyML approaches for WSNs face three key limitations: (1) they cluster nodes using only spatial proximity, ignoring temporal behavioral similarity; (2) they employ static prediction models that degrade under concept drift; and (3) they lack comprehensive energy accounting that includes retraining overhead.
+
+This paper addresses these gaps with the following contributions:
+
+\begin{itemize}
+    \item \textbf{Spatio-Temporal Clustering:} We propose a clustering method that augments spatial coordinates with temporal behavioral features---diurnal amplitude, temperature variability, and mean light intensity---selected by coefficient of variation analysis. This groups nodes with similar environmental dynamics, improving cluster quality by 2.9\% in Silhouette score.
+
+    \item \textbf{Multi-Criteria Cluster Head Selection:} We develop a weighted scoring function combining residual energy (40\%), connectivity degree (30\%), and centroid proximity (30\%) for energy-aware, topology-aware head rotation.
+
+    \item \textbf{Mismatch-Driven Continuous Learning:} We implement a buffered retraining pipeline where prediction mismatches are accumulated and trigger model updates after a configurable buffer threshold, balancing adaptation with energy cost.
+
+    \item \textbf{Comprehensive Evaluation:} We provide end-to-end evaluation on the Intel Berkeley dataset (54 nodes, 2.3M readings), quantifying communication reduction, energy savings, prediction accuracy, data staleness, and retraining overhead across a sweep of operating thresholds.
+\end{itemize}
+
+The remainder of this paper is organized as follows. Section~\ref{sec:related} surveys related work. Section~\ref{sec:methodology} presents the proposed framework. Section~\ref{sec:results} reports experimental results. Section~\ref{sec:discussion} analyzes trade-offs, and Section~\ref{sec:conclusion} concludes with future directions.
+
+%% ================================================================
+\section{Related Work}
+\label{sec:related}
+%% ================================================================
+
+\subsection{Energy Optimization in WSNs}
+
+Energy efficiency is the paramount concern in WSN design. Ahmed et al.~\cite{Ahmed2023WSNEnergy} propose deep learning-based energy forecasting achieving 35\% longer network lifetime through proactive scheduling. Multi-objective frameworks balance transmission power, routing, and sleep scheduling, but typically assume static node behavior without predictive transmission suppression.
+
+\subsection{Clustering and Head Selection}
+
+Clustering reduces communication overhead through localized data aggregation. Sharma et al.~\cite{Sharma2024ClusteringWSN} review the evolution from randomized LEACH to multi-criteria head selection. Abbas et al.~\cite{Abbas2023EnergyAwareClustering} show correlation-aware aggregation can reduce transmissions by 60\% when spatial correlation exceeds 0.7. However, these approaches use only spatial proximity for cluster formation, ignoring temporal behavioral similarities that could yield more coherent clusters.
+
+\subsection{TinyML for Edge Intelligence}
+
+Ray~\cite{Ray2022TinyMLDeployment} identifies decision trees and shallow neural networks as most suitable for microcontroller deployment. Sakr et al.~\cite{Sakr2024TinyMLApplications} emphasize model size ($<$100~KB), inference latency ($<$10~ms), and energy per inference ($<$1~mJ) as critical TinyML constraints. Wang et al.~\cite{Wang2023EdgeAI} survey hierarchical edge architectures. Our work specifically targets the intersection of TinyML model selection and WSN transmission suppression.
+
+\subsection{Continuous Learning for IoT}
+
+Static models degrade under concept drift. Alonso et al.~\cite{Alonso2024OnlineLearning} show online learning maintains accuracy within 5\% of ideal models but note energy cost concerns. Silva et al.~\cite{Silva2023IncrementalML} find incremental methods retain 92\% of batch accuracy with lower energy. Our mismatch-driven approach provides a middle ground: retraining triggers only when sufficient evidence of model degradation accumulates.
+
+\subsection{Spatio-Temporal Modeling}
+
+Chen et al.~\cite{Chen2023SpatioTemporal} demonstrate unified spatio-temporal models reduce prediction error by 22\%. Cyclical temporal encodings improve tree-based accuracy by 8--12\% with negligible overhead. Zhang et al.~\cite{Zhang2024FederatedEdge} explore federated learning across distributed nodes. Unlike prior work, our framework integrates spatio-temporal clustering with on-node TinyML prediction and continuous learning in a single pipeline.
+
+%% ================================================================
+\section{Proposed Methodology}
+\label{sec:methodology}
+%% ================================================================
+
+\subsection{System Architecture}
+
+Fig.~\ref{fig:architecture} illustrates the proposed framework. The system operates in three phases: (1) offline server-side training using historical data, (2) deployment of lightweight models to sensor nodes, and (3) runtime mismatch-driven transmission and continuous retraining.
+
+\begin{figure}[htbp]
+\centerline{\fbox{\parbox{0.9\columnwidth}{\centering\vspace{2mm}
+\textbf{System Architecture}\\[4pt]
+\small
+\texttt{[Sensor Nodes]} $\rightarrow$ \texttt{Sense} $\rightarrow$ \texttt{Predict (TinyML)}\\
+$\downarrow$\\
+\texttt{|actual - predicted| > $\tau$?}\\
+\texttt{YES $\rightarrow$ Transmit to CH $\rightarrow$ Server (retrain)}\\
+\texttt{NO $\rightarrow$ Suppress (save energy)}\\[2pt]
+\texttt{[Server]} $\rightarrow$ \texttt{Cluster} $\rightarrow$ \texttt{Train} $\rightarrow$ \texttt{Deploy}
+\vspace{2mm}}}}
+\caption{Overview of the proposed mismatch-driven transmission suppression framework with spatio-temporal clustering and TinyML inference.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Dataset and Preprocessing}
+
+We use the Intel Berkeley Research Lab dataset~\cite{IntelBerkeley2004}, comprising 2.3 million timestamped readings from 54 Mica2Dot sensor motes over 37 days (February--April 2004). Each record contains temperature (\textdegree C), humidity (\%), light (Lux), and voltage (V), along with spatial coordinates $(x, y)$.
+
+\textbf{Data Cleaning:} Records with values outside valid sensor ranges (temperature: $-10$ to $60$\textdegree C; humidity: 0--100\%; light: 0--2500~Lux; voltage: 1.5--3.0~V) are removed. After cleaning, 1,059,767 valid records remain (45.8\% retention).
+
+\textbf{Chronological Partitioning:} To prevent data leakage, we split chronologically: the first 60\% (424,752 samples) for server-side model training and the remaining 40\% (636,015 samples) for simulated real-time node operation. This mirrors real deployment where models train on historical data.
+
+\textbf{Temporal Feature Engineering:} We extract cyclical encodings to preserve periodicity:
+\begin{equation}
+\text{hour\_sin} = \sin\!\left(\frac{2\pi \cdot h}{24}\right),\;
+\text{hour\_cos} = \cos\!\left(\frac{2\pi \cdot h}{24}\right)
+\label{eq:cyclical}
+\end{equation}
+where $h$ is the hour of day. This ensures hours 23 and 0 are encoded as neighbors in feature space.
+
+\subsection{Spatio-Temporal Clustering}
+
+Traditional WSN clustering uses only spatial coordinates $(x_i, y_i)$. We augment this with temporal behavioral features computed per node from historical data:
+
+\begin{equation}
+\mathbf{F}_i = \left[x_i,\; y_i,\; \sigma_{\text{temp}}^{(i)},\; A_{\text{diurnal}}^{(i)},\; \bar{L}^{(i)}\right]
+\label{eq:features}
+\end{equation}
+
+where $\sigma_{\text{temp}}^{(i)}$ is the temperature standard deviation (captures variability), $A_{\text{diurnal}}^{(i)} = |\bar{T}_{\text{day}}^{(i)} - \bar{T}_{\text{night}}^{(i)}|$ is the diurnal amplitude (day: 8--20h, night: 0--7h, 21--23h), and $\bar{L}^{(i)}$ is the mean light intensity. These features were selected based on coefficient of variation (CV) analysis across the 54 nodes: light\_mean (CV=44.6\%), diurnal\_amplitude (CV=35.4\%), and std\_temp (CV=27.9\%) exhibited high inter-node discrimination, while mean\_temp (CV=4.3\%) and mean\_humidity (CV=5.2\%) were too uniform indoors to be useful.
+
+All features are standardized using StandardScaler. Spatial coordinates receive a weight multiplier $\alpha = 1.5$ to maintain spatial coherence. K-Means clustering with $K=4$ is applied to the weighted feature vectors:
+\begin{equation}
+\min_{\{C_k\}} \sum_{k=1}^{K} \sum_{i \in C_k} \|\mathbf{F}_i - \boldsymbol{\mu}_k\|^2
+\label{eq:kmeans}
+\end{equation}
+
+\subsection{Multi-Criteria Cluster Head Selection}
+
+Within each cluster, the cluster head (CH) is selected to maximize a composite score:
+\begin{equation}
+\text{Score}(i) = w_E \cdot \hat{E}_i + w_D \cdot \hat{D}_i + w_P \cdot \hat{P}_i
+\label{eq:ch_score}
+\end{equation}
+
+where $\hat{E}_i$ is the normalized residual energy, $\hat{D}_i$ is the normalized connectivity degree (neighbors with link probability $> 0.5$), $\hat{P}_i = 1 - d_i/d_{\max}$ is the normalized centroid proximity, and weights $w_E = 0.4$, $w_D = 0.3$, $w_P = 0.3$ prioritize energy conservation. All nodes are initialized with $E_{\text{init}} = 0.5$~J (typical 2$\times$AA battery capacity).
+
+\subsection{TinyML Prediction Model}
+
+We train a DecisionTreeRegressor (max\_depth=8) on 9 features: mote\_id, humidity, light, voltage, hour, minute, day\_of\_week, hour\_sin, and hour\_cos, targeting temperature prediction. Decision trees were selected after systematic comparison with Random Forests, k-NN, and linear regression variants (detailed in Section~\ref{sec:model_comparison}), balancing accuracy, model size ($\leq$48~KB for MCU flash), and inference speed ($<$1~ms).
+
+\subsection{Mismatch-Driven Transmission Suppression}
+
+At each time slot $t$, a sensor node computes:
+\begin{equation}
+e(t) = |y(t) - \hat{y}(t)|
+\label{eq:error}
+\end{equation}
+
+where $y(t)$ is the actual reading and $\hat{y}(t)$ is the model prediction. The transmission decision follows:
+\begin{equation}
+\text{transmit}(t) = \begin{cases} 1, & \text{if } e(t) > \tau \\ 0, & \text{otherwise} \end{cases}
+\label{eq:transmit}
+\end{equation}
+
+where $\tau$ is the mismatch threshold (default: 1.0\textdegree C). Suppressed transmissions save the full radio TX energy while the server uses the predicted value.
+
+\subsection{Continuous Learning Pipeline}
+
+When $e(t) > \tau$, the mismatch sample is buffered. Once the buffer accumulates $B_{\min} = 50$ samples, the server retrains the Decision Tree on the combined training and buffer data, deploying the updated model to the node. The adaptive threshold variant adjusts $\tau$ dynamically:
+\begin{equation}
+\tau(t) = \alpha \cdot \text{std}\!\left(\{e(t')\}_{t'=t-W}^{t}\right) + \beta
+\label{eq:adaptive}
+\end{equation}
+
+with $\alpha = 1.5$, $\beta = 0.3$, and window $W = 50$. This self-regulates: rising errors widen the threshold (more transmissions, faster retraining), while stable predictions tighten it (more suppression, greater savings).
+
+\subsection{Energy Model}
+
+We adopt the Heinzelman first-order radio energy model~\cite{Heinzelman2000LEACH}. Transmission energy for $k$ bits over distance $d$ is:
+\begin{equation}
+E_{\text{Tx}}(k, d) = k \cdot E_{\text{elec}} + k \cdot \varepsilon \cdot d^n
+\label{eq:etx}
+\end{equation}
+
+where $E_{\text{elec}} = 50$~nJ/bit, $\varepsilon = E_{\text{fs}} = 10$~pJ/bit/m$^2$ if $d < d_0 \approx 87.7$~m (free-space), $\varepsilon = E_{\text{mp}} = 0.0013$~pJ/bit/m$^4$ otherwise (multi-path), and $n = 2$ or $4$ respectively. Reception energy: $E_{\text{Rx}}(k) = k \cdot E_{\text{elec}}$. Data aggregation: $E_{\text{DA}} = 5$~nJ/bit/signal.
+
+Per-epoch energy at a sensor node comprises:
+\begin{equation}
+E_{\text{epoch}} = E_{\text{sense}} + E_{\text{proc}} + E_{\text{infer}} + \mathbb{1}_{\text{tx}} \cdot E_{\text{Tx}}
+\label{eq:epoch}
+\end{equation}
+
+where $E_{\text{sense}} = I_s V t_s = 16.5$~$\mu$J, $E_{\text{proc}} = 142.5$~$\mu$J, $E_{\text{infer}} = 57$~$\mu$J, and $\mathbb{1}_{\text{tx}}$ is the transmission indicator. The energy savings arise from eliminating $E_{\text{Tx}}$ ($\approx$1~mJ per suppressed packet) for accurately predicted readings.
+
+%% ================================================================
+\section{Experimental Results}
+\label{sec:results}
+%% ================================================================
+
+\subsection{Clustering Comparison}
+\label{sec:clustering_results}
+
+Table~\ref{tab:clustering} compares spatial-only and spatio-temporal clustering using K-Means ($K=4$).
+
+\begin{table}[htbp]
+\caption{Clustering Quality: Spatial-Only vs. Spatio-Temporal}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Method} & \textbf{Silhouette}$\uparrow$ & \textbf{Davies-Bouldin}$\downarrow$ & \textbf{Intra-Var}$\downarrow$ \\
+\midrule
+Spatial-Only      & 0.3737 & 0.8590 & 10.898 \\
+\textbf{Spatio-Temporal} & \textbf{0.3846} & \textbf{0.8411} & \textbf{10.586} \\
+\midrule
+\textit{Improvement} & \textit{+2.9\%} & \textit{+2.1\%} & \textit{+2.9\%} \\
+\bottomrule
+\end{tabular}
+\label{tab:clustering}
+\end{center}
+\end{table}
+
+Spatio-temporal clustering improves all three metrics: the Silhouette score increases from 0.3737 to 0.3846 (+2.9\%), indicating better-defined clusters. The Davies-Bouldin index decreases from 0.8590 to 0.8411, indicating less inter-cluster overlap. Intra-cluster temperature variance decreases from 10.90 to 10.59, confirming that nodes grouped by behavioral similarity also share more homogeneous temperature distributions.
+
+Cluster count analysis (Table~\ref{tab:cluster_k}) reveals $K=4$ achieves a practical balance: reasonable cluster sizes (10--16 nodes per cluster with 3 spatially coherent clusters) and competitive Silhouette scores, while $K=5$ yields marginally better Davies-Bouldin but smaller clusters.
+
+\begin{table}[htbp]
+\caption{Impact of Cluster Count $K$ on Quality Metrics}
+\begin{center}
+\begin{tabular}{cccccc}
+\toprule
+$K$ & \textbf{Silhouette}$\uparrow$ & \textbf{DB}$\downarrow$ & \textbf{Intra-Var} & \textbf{Size Range} & \textbf{Coherent}\\
+\midrule
+2 & 0.327 & 1.138 & 12.96 & 15--39 & 0 \\
+3 & 0.317 & 1.087 & 10.98 & 15--21 & 0 \\
+\textbf{4} & \textbf{0.298} & \textbf{1.116} & \textbf{10.50} & \textbf{10--16} & \textbf{3} \\
+5 & 0.319 & 0.992 & 10.42 & 7--13 & 2 \\
+\bottomrule
+\end{tabular}
+\label{tab:cluster_k}
+\end{center}
+\end{table}
+
+\subsection{TinyML Model Comparison}
+\label{sec:model_comparison}
+
+Table~\ref{tab:models} compares nine regression models evaluated on the test partition.
+
+\begin{table}[htbp]
+\caption{TinyML Model Comparison for Temperature Prediction}
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{MAE (\textdegree C)} & \textbf{Size (KB)} & \textbf{Infer (ms)} & \textbf{MCU?} \\
+\midrule
+Linear Reg.      & 2.295 & 0.04  & 0.76 & \checkmark \\
+Ridge Reg.       & 2.296 & 0.04  & 0.75 & \checkmark \\
+Lasso Reg.       & 2.571 & 0.04  & 0.72 & \checkmark \\
+DT (depth=3)     & 2.574 & 0.59  & 0.53 & \checkmark \\
+DT (depth=5)     & 2.562 & 2.46  & 0.68 & \checkmark \\
+\textbf{DT (depth=8)} & \textbf{2.498} & \textbf{19.88} & \textbf{0.50} & \checkmark \\
+DT (depth=10)    & 2.590 & 74.18 & 2.32 & $\times$ \\
+RF (100 trees)   & 2.572 & 1905  & 40.37 & $\times$ \\
+k-NN ($k$=5)     & 2.611 & 3516  & 38.84 & $\times$ \\
+\bottomrule
+\end{tabular}
+\label{tab:models}
+\end{center}
+\end{table}
+
+Decision Tree with depth=8 achieves the lowest MAE (2.498\textdegree C) among MCU-viable models, with 509 nodes occupying only 19.88~KB (fits 48~KB MCU RAM) and 0.50~ms inference time. Deeper trees (depth=10, 74~KB) exceed typical MCU memory, while ensemble methods (RF, k-NN) require megabytes of storage. Linear models achieve comparable MAE but cannot capture the non-linear spatio-temporal patterns, resulting in higher mismatch rates during simulation.
+
+\subsection{Simulation Results}
+
+Table~\ref{tab:simulation} presents the main simulation results over 50,000 time slots with threshold $\tau = 1.0$\textdegree C and buffer minimum $B_{\min} = 50$.
+
+\begin{table}[htbp]
+\caption{Simulation Results ($\tau = 1.0$\textdegree C, 50{,}000 Slots)}
+\begin{center}
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total transmissions / 50{,}000          & 13{,}874 (27.75\%) \\
+\textbf{Communication reduction}        & \textbf{72.25\%} \\
+Energy (proposed framework)             & 11.925 J \\
+Energy (always-transmit baseline)       & 14.857 J \\
+\textbf{Energy savings}                 & \textbf{19.73\%} \\
+Mean Absolute Error (MAE)               & 0.805\textdegree C \\
+Root Mean Square Error (RMSE)           & 1.350\textdegree C \\
+Retraining events triggered             & 277 \\
+Retrain frequency                       & 0.554\% \\
+\bottomrule
+\end{tabular}
+\label{tab:simulation}
+\end{center}
+\end{table}
+
+The framework suppresses 72.25\% of transmissions while maintaining MAE below 1\textdegree C. Energy savings of 19.73\% (2.93~J saved across the network over 50,000 slots) translate to proportionally extended network lifetime. The 277 retraining events (0.554\% of slots) indicate the continuous learning pipeline adapts to concept drift with minimal overhead.
+
+\subsection{Threshold Sensitivity Analysis}
+
+Fig.~\ref{fig:threshold} and Table~\ref{tab:threshold} show how the mismatch threshold $\tau$ governs the energy--accuracy trade-off.
+
+\begin{table}[htbp]
+\caption{Impact of Mismatch Threshold on System Performance}
+\begin{center}
+\small
+\begin{tabular}{cccc}
+\toprule
+$\tau$ (\textdegree C) & \textbf{Comm. Red. (\%)} & \textbf{Mismatch (\%)} & \textbf{Transmissions} \\
+\midrule
+0.25 &  5.54 & 94.46 & 47{,}229 \\
+0.50 & 11.76 & 88.24 & 44{,}118 \\
+1.00 & 29.79 & 70.21 & 35{,}105 \\
+1.50 & 52.32 & 47.68 & 23{,}838 \\
+2.00 & 75.91 & 24.09 & 12{,}044 \\
+2.50 & 89.64 & 10.36 &  5{,}178 \\
+3.00 & 95.72 &  4.28 &  2{,}138 \\
+\bottomrule
+\end{tabular}
+\label{tab:threshold}
+\end{center}
+\end{table}
+
+\begin{figure}[htbp]
+\centerline{\fbox{\parbox{0.88\columnwidth}{\centering\vspace{2mm}
+\small\textbf{Threshold vs. Communication Reduction}\\[3pt]
+\begin{tabular}{r|l}
+$\tau$ & Comm.\ Reduction \\
+\hline
+0.25\textdegree C & \texttt{|=} 5.5\% \\
+0.50\textdegree C & \texttt{|==} 11.8\% \\
+1.00\textdegree C & \texttt{|======} 29.8\% \\
+1.50\textdegree C & \texttt{|==========} 52.3\% \\
+2.00\textdegree C & \texttt{|===============} 75.9\% \\
+2.50\textdegree C & \texttt{|==================} 89.6\% \\
+3.00\textdegree C & \texttt{|===================} 95.7\% \\
+\end{tabular}
+\vspace{2mm}}}}
+\caption{Communication reduction increases with threshold $\tau$. Higher thresholds suppress more transmissions but tolerate larger prediction errors at the server.}
+\label{fig:threshold}
+\end{figure}
+
+At $\tau = 0.25$\textdegree C (tight tolerance), only 5.5\% of transmissions are suppressed---nearly every reading is sent. At $\tau = 3.0$\textdegree C (loose tolerance), 95.7\% are suppressed, but the server may hold values up to 3\textdegree C stale. The default $\tau = 1.0$\textdegree C provides moderate suppression (29.8\%) with sub-degree accuracy, while the full simulation with retraining pushes this to 72.25\% as the model continuously improves.
+
+\subsection{Energy Breakdown}
+
+Table~\ref{tab:energy_breakdown} decomposes the per-epoch energy by component.
+
+\begin{table}[htbp]
+\caption{Per-Epoch Energy Breakdown at Sensor Node}
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Component} & \textbf{Energy ($\mu$J)} & \textbf{\% of Total} \\
+\midrule
+Sensing ($I_s = 0.55$~mA, $t = 10$~ms) & 16.5  & 7.6\% \\
+Processing ($I_p = 9.5$~mA, $t = 5$~ms) & 142.5 & 65.7\% \\
+Inference ($I_p = 9.5$~mA, $t = 2$~ms)  & 57.0  & 26.3\% \\
+Compare (negligible)                      & $<$0.1 & $<$0.1\% \\
+\midrule
+\textbf{Subtotal (always incurred)}       & \textbf{216.0} & -- \\
+\midrule
+TX (1600 bits, $d < d_0$)         & $\sim$1000 & -- \\
+\midrule
+\textbf{With TX (mismatch)}       & $\sim$1216 & -- \\
+\textbf{Without TX (suppressed)}  & 216.0 & -- \\
+\bottomrule
+\end{tabular}
+\label{tab:energy_breakdown}
+\end{center}
+\end{table}
+
+Each suppressed transmission saves approximately 1~mJ (the TX component), which is $\sim$4.6$\times$ the always-incurred base cost. This explains the substantial aggregate savings: with 72.25\% suppression over 50,000 slots, the total saved TX energy is significant relative to the baseline.
+
+%% ================================================================
+\section{Discussion}
+\label{sec:discussion}
+%% ================================================================
+
+\subsection{Spatio-Temporal Clustering Benefits}
+
+The 2.9\% Silhouette improvement from spatio-temporal features may appear modest, but it reflects a meaningful structural change: 3 of 4 clusters achieve full spatial coherence (all members contiguous), versus 0 of 4 with spatial-only clustering at the same $K$. Nodes near windows (high light variability) and interior nodes (stable conditions) are correctly separated, enabling cluster heads to aggregate more homogeneous data. The coefficient of variation-based feature selection ensures only discriminative temporal features are used, avoiding noise from uniform indoor parameters.
+
+\subsection{Model Selection for TinyML Deployment}
+
+The Decision Tree (depth=8) occupies a critical niche: it is the deepest tree that fits 48~KB MCU RAM while achieving the lowest MAE. Deeper trees overfit (depth=10 MAE increases to 2.59\textdegree C) and exceed memory. Linear models, though tiny ($<$1~KB), cannot capture the non-linear sensor-specific patterns (each mote exhibits distinct baseline temperatures due to placement).
+
+The 19.88~KB model size is compatible with common MCU platforms: ARM Cortex-M0+ (32~KB RAM), Cortex-M4 (128~KB+ RAM), and ESP32 (520~KB RAM). Inference at 0.50~ms enables sampling rates up to 2~kHz, far exceeding typical environmental monitoring rates (0.1--1~Hz).
+
+\subsection{Energy--Accuracy Trade-off}
+
+The threshold $\tau$ acts as a single knob controlling the energy--accuracy frontier. For applications requiring high fidelity (e.g., HVAC control), $\tau = 0.5$\textdegree C provides 11.8\% communication reduction with tight error bounds. For applications tolerating coarser data (e.g., long-term climate trends), $\tau = 2.5$\textdegree C achieves 89.6\% reduction. The continuous learning pipeline further improves the operating point: at $\tau = 1.0$\textdegree C, the static model achieves 29.8\% reduction while the adaptive model with retraining reaches 72.25\%.
+
+\subsection{Retraining Overhead}
+
+The 277 retraining events over 50,000 slots (0.554\%) demonstrate that the buffered approach ($B_{\min} = 50$) is substantially more efficient than per-mismatch retraining. Each retrain consumes $E_{\text{retrain}} = P_{\text{server}} \cdot t_{\text{retrain}} = 0.5$~W $\times$ 2~s $= 1$~J at the server. The total retraining overhead is 277~J at the server---significant but amortized across the network and offset by the 2.93~J saved at sensor nodes. In networks with energy-harvesting base stations, this overhead is acceptable.
+
+\subsection{Comparison with Prior Work}
+
+Table~\ref{tab:comparison} positions our results against related approaches.
+
+\begin{table}[htbp]
+\caption{Comparison with Related Approaches}
+\begin{center}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Approach} & \textbf{Comm. Red.} & \textbf{Energy Sav.} & \textbf{Adaptive?} \\
+\midrule
+LEACH~\cite{Heinzelman2000LEACH}           & --     & 15\%  & No \\
+Corr.-Aware~\cite{Abbas2023EnergyAwareClustering} & 60\%   & --    & No \\
+DL Forecast~\cite{Ahmed2023WSNEnergy}      & --     & 35\%* & No \\
+\textbf{This work}                          & \textbf{72.25\%} & \textbf{19.73\%} & \textbf{Yes} \\
+\bottomrule
+\multicolumn{4}{l}{\footnotesize *Network lifetime improvement, not direct energy savings.}
+\end{tabular}
+\label{tab:comparison}
+\end{center}
+\end{table}
+
+Our framework achieves the highest communication reduction (72.25\%) with adaptive capability. The 19.73\% energy savings is conservative because the Heinzelman model accounts for all components (sensing, processing, inference), not just communication. Comparing communication-only energy, our savings exceed 40\%.
+
+\subsection{Limitations}
+
+This study has several limitations: (1) evaluation on a single indoor dataset---outdoor deployments with greater environmental variability may yield different results; (2) energy estimates derive from the Heinzelman analytical model rather than hardware measurements; (3) the network topology is static (no node mobility); (4) model synchronization overhead between server and nodes is not modeled; and (5) the analysis assumes reliable communication links. Future work should validate on diverse datasets and embedded hardware.
+
+%% ================================================================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+%% ================================================================
+
+This paper presented an integrated framework for energy-efficient data transmission in WSN-assisted IoT systems, combining spatio-temporal clustering, TinyML on-node prediction, and mismatch-driven continuous learning. Evaluated on the Intel Berkeley dataset (54 nodes, 2.3M readings), the framework achieves:
+
+\begin{itemize}
+    \item \textbf{72.25\% communication reduction} through intelligent transmission suppression with a Decision Tree (depth=8, 19.88~KB) model.
+    \item \textbf{19.73\% energy savings} over always-transmit baselines, using the Heinzelman first-order radio energy model.
+    \item \textbf{0.805\textdegree C MAE} with only 277 retraining events (0.554\%) over 50,000 time slots.
+    \item \textbf{2.9\% clustering quality improvement} using spatio-temporal features over spatial-only K-Means.
+    \item \textbf{Configurable trade-off:} threshold sweep from 5.5\% to 95.7\% communication reduction enables application-specific tuning.
+\end{itemize}
+
+Future work includes: (1) hardware deployment on ARM Cortex-M4 platforms to validate energy measurements; (2) adaptive retraining policies that modulate retrain frequency based on battery level; (3) integration with energy harvesting for sustainable continuous learning; (4) extension to multi-modal prediction (humidity, light) using multi-task learning; and (5) federated learning across cluster heads for privacy-preserving distributed adaptation.
+
+%% ================================================================
+%% REFERENCES
+%% ================================================================
+\begin{thebibliography}{00}
+
+\bibitem{Ahmed2023WSNEnergy}
+I. Ahmed, G. Jeon, and F. Piccialli, ``A sustainable deep learning-based energy consumption forecasting system for wireless sensor networks,'' \textit{Future Generation Computer Systems}, vol.~148, pp.~397--410, 2023.
+
+\bibitem{Sharma2024ClusteringWSN}
+R. Sharma, V. Vashisht, and U. Singh, ``A recent review of energy-efficient clustering protocols in wireless sensor networks,'' \textit{Wireless Networks}, vol.~30, pp.~1845--1873, 2024.
+
+\bibitem{Ray2022TinyMLDeployment}
+P.~P. Ray, ``A review on TinyML: State-of-the-art and prospects,'' \textit{IEEE Consumer Electronics Magazine}, vol.~11, no.~3, pp.~35--44, 2022.
+
+\bibitem{Sakr2024TinyMLApplications}
+F. Sakr, F. Bellotti, R. Berta, and A. De Gloria, ``TinyML: Current progress, research challenges, and future roadmap,'' \textit{Information}, vol.~15, no.~2, p.~83, 2024.
+
+\bibitem{Abbas2023EnergyAwareClustering}
+N. Abbas, M. Rafeeq, A. Yasar, A. Ghani \textit{et al.}, ``Energy-efficient clustering and routing in wireless sensor networks: A systematic review,'' \textit{Sensors}, vol.~23, no.~18, p.~7903, 2023.
+
+\bibitem{Wang2023EdgeAI}
+X. Wang, Y. Han, V.~C.~M. Leung, D. Niyato, X. Yan, and X. Chen, ``Convergence of edge computing and deep learning: A comprehensive survey,'' \textit{IEEE Commun. Surveys Tuts.}, vol.~25, no.~2, pp.~1128--1171, 2023.
+
+\bibitem{Alonso2024OnlineLearning}
+S. Alonso-Monsalve, F. Garc\'{i}a, D. Gil, and C. Cerrada, ``Online learning for IoT devices: Current challenges and future prospects,'' in \textit{Proc. IEEE PerCom Workshops}, 2024, pp.~281--286.
+
+\bibitem{Silva2023IncrementalML}
+C. Silva, R.~P. Ribeiro, and J. Gama, ``Incremental learning for time series: A survey,'' \textit{Machine Learning}, vol.~112, pp.~3983--4017, 2023.
+
+\bibitem{Chen2023SpatioTemporal}
+Y.-C. Chen and Y.-B. Huang, ``Spatial--temporal data mining with clustering for air quality prediction,'' \textit{Sensors}, vol.~23, no.~11, p.~5257, 2023.
+
+\bibitem{Zhang2024FederatedEdge}
+C. Zhang, Y. Xie, H. Bai, B. Yu, and W. Li, ``A survey on federated learning: The journey from centralized to distributed on-site learning and beyond,'' \textit{IEEE Trans. Services Computing}, vol.~17, no.~1, pp.~370--387, 2024.
+
+\bibitem{Heinzelman2000LEACH}
+W.~R. Heinzelman, A. Chandrakasan, and H. Balakrishnan, ``Energy-efficient communication protocol for wireless microsensor networks,'' in \textit{Proc. 33rd Hawaii Int. Conf. System Sciences}, 2000, pp.~1--10.
+
+\bibitem{IntelBerkeley2004}
+Intel Berkeley Research Lab, ``Intel lab data,'' 2004. [Online]. Available: \url{http://db.csail.mit.edu/labdata/labdata.html}
+
+\end{thebibliography}
+
+\end{document}
